@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Dominó</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f1117;
+  --surface: #181c26;
+  --surface2: #1f2435;
+  --border: rgba(255,255,255,0.07);
+  --text: #eef0f5;
+  --muted: rgba(255,255,255,0.35);
+  --gold: #f0c040;
+  --gold-dim: rgba(240,192,64,0.15);
+}
+
+html, body {
+  height: 100%;
+  height: -webkit-fill-available;
+  overflow: hidden;
+  background: var(--bg);
+  font-family: 'Nunito', sans-serif;
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* ── SETUP ── */
+#setup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: -webkit-fill-available;
+  padding: 1.5rem;
+  gap: 1.25rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.setup-logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 3rem;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  line-height: 1;
+  text-align: center;
+}
+
+.setup-logo small {
+  display: block;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.25em;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.setup-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 1.25rem;
+  width: 100%;
+  max-width: 340px;
+}
+
+.setup-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.6rem;
+  font-family: 'DM Mono', monospace;
+}
+
+.player-count-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1.1rem;
+}
+
+.cnt-btn {
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.6rem;
+  padding: 0.5rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: all 0.15s;
+  text-align: center;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.cnt-btn.active {
+  background: var(--gold-dim);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.player-names {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 1.1rem;
+}
+
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.name-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.name-input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text);
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.4rem 0.65rem;
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
+  transition: border-color 0.2s;
+}
+
+.name-input:focus { border-color: var(--gold); }
+
+.meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.1rem;
+}
+
+.meta-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  white-space: nowrap;
+}
+
+.meta-select {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.88rem;
+  padding: 0.38rem 0.6rem;
+  outline: none;
+}
+
+.start-btn {
+  width: 100%;
+  background: var(--gold);
+  border: none;
+  border-radius: 12px;
+  color: #0f1117;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.35rem;
+  letter-spacing: 0.1em;
+  padding: 0.65rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.start-btn:active { transform: scale(0.97); opacity: 0.9; }
+
+/* ── GAME ── */
+#game {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.topbar-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.25rem;
+  letter-spacing: 0.1em;
+  color: var(--gold);
+}
+
+.topbar-meta {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--muted);
+}
+
+.icon-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  padding: 0.28rem 0.5rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: all 0.15s;
+  font-family: 'DM Mono', monospace;
+}
+
+.players-area {
+  flex: 1;
+  display: -webkit-grid;
+  display: grid;
+  overflow: hidden;
+  padding: 0.45rem;
+  gap: 0.45rem;
+}
+
+.players-area.p2 { grid-template-columns: 1fr 1fr; }
+.players-area.p3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.players-area.p4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.players-area.p3 .player-card:last-child { grid-column: 1 / -1; }
+
+.player-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  min-height: 0;
+}
+
+.player-card.leader { border-color: var(--gold) !important; }
+.player-card.leader::after {
+  content: '👑';
+  position: absolute;
+  top: 3px; right: 5px;
+  font-size: 0.7rem;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.55rem 0.15rem;
+  flex-shrink: 0;
+}
+
+.p-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+.p-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.p-score-wrap {
+  text-align: center;
+  flex-shrink: 0;
+  line-height: 1;
+  padding: 0 0.4rem 0.1rem;
+}
+
+.p-score {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(2rem, 9vw, 3.5rem);
+  line-height: 1;
+}
+
+.p-score.bump { animation: bump 0.3s ease both; }
+
+.p-progress { height: 3px; background: rgba(255,255,255,0.05); flex-shrink: 0; }
+.p-progress-fill { height: 100%; transition: width 0.4s ease; }
+
+.quick-btns {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+  padding: 0.28rem 0.35rem;
+  flex: 1;
+  min-height: 0;
+}
+
+.q-btn {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 7px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  font-weight: 500;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: background 0.1s, transform 0.1s;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+}
+
+.q-btn:active { transform: scale(0.9); background: rgba(255,255,255,0.09); }
+
+.custom-row {
+  display: flex;
+  gap: 3px;
+  padding: 0.2rem 0.35rem 0.35rem;
+  flex-shrink: 0;
+}
+
+.c-input {
+  flex: 1;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 7px;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  padding: 0.28rem 0.35rem;
+  outline: none;
+  text-align: center;
+  min-width: 0;
+  -webkit-user-select: text;
+  user-select: text;
+  touch-action: manipulation;
+}
+
+.c-input::placeholder { color: rgba(255,255,255,0.18); font-size: 0.65rem; }
+
+.c-add {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 7px;
+  color: var(--text);
+  font-size: 1rem;
+  width: 28px;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: all 0.12s;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.c-add:active { transform: scale(0.88); }
+
+.err-flash {
+  position: absolute;
+  bottom: 36px; left: 50%;
+  transform: translateX(-50%);
+  background: #c0392b;
+  color: white;
+  font-size: 0.6rem;
+  padding: 2px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  font-family: 'DM Mono', monospace;
+  z-index: 10;
+  transition: opacity 0.2s;
+}
+
+.err-flash.show { opacity: 1; }
+
+.bottombar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.38rem 0.9rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+  gap: 0.5rem;
+}
+
+.bot-btn {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  padding: 0.32rem 0.65rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: all 0.15s;
+}
+
+.bot-btn:hover { color: var(--text); }
+
+.bot-btn.danger {
+  border-color: rgba(192,57,43,0.25);
+  color: rgba(239,83,80,0.6);
+}
+
+.bot-btn.danger:hover { color: #ef5350; border-color: rgba(239,83,80,0.5); }
+
+.round-info {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--muted);
+}
+
+
+@keyframes bump {
+  0%,100% { transform: scale(1); }
+  40% { transform: scale(1.25); }
+  70% { transform: scale(0.92); }
+}
+</style>
+</head>
+<body>
+
+<!-- SETUP -->
+<div id="setup">
+  <div class="setup-logo">DOMINÓ<small>CONTADOR DE PONTOS</small></div>
+
+  <div class="setup-card">
+    <div class="setup-label">Nº de jogadores</div>
+    <div class="player-count-row">
+      <button type="button" class="cnt-btn" data-count="2">2</button>
+      <button type="button" class="cnt-btn active" data-count="3">3</button>
+      <button type="button" class="cnt-btn" data-count="4">4</button>
+    </div>
+
+    <div class="setup-label">Nomes</div>
+    <div class="player-names" id="name-inputs"></div>
+
+    <div class="meta-row">
+      <span class="meta-label">META:</span>
+      <select class="meta-select" id="meta-select">
+        <option value="100" selected>100 pts</option>
+        <option value="200">200 pts</option>
+        <option value="500">500 pts</option>
+      </select>
+    </div>
+
+    <button type="button" class="start-btn" id="start-btn">JOGAR</button>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="game">
+  <div class="topbar">
+    <div class="topbar-title">DOMINÓ</div>
+    <div class="topbar-meta" id="meta-display"></div>
+    <button type="button" class="icon-btn" id="config-btn">⚙ config</button>
+  </div>
+
+  <div class="players-area" id="players-area"></div>
+
+  <div class="bottombar">
+    <button type="button" class="bot-btn" id="undo-btn">↩ desfazer</button>
+    <div class="round-info" id="round-info">rodada 0</div>
+    <button type="button" class="bot-btn danger" id="reset-btn">reiniciar</button>
+  </div>
+</div>
+
+
+
+<script>
+const COLORS = [
+  { dot: '#4fc3f7' },
+  { dot: '#ef5350' },
+  { dot: '#66bb6a' },
+  { dot: '#ab47bc' },
+];
+
+const QUICK = [5, 10, 15, 20, 25, 30, 40, 50];
+
+let cfg = { count: 3, names: ['Xavier','Miro','Leonel','Vinagre'], target: 100 };
+let state = { scores: [], history: [] };
+
+// Wire static buttons via addEventListener (iOS-safe)
+document.querySelectorAll('.cnt-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() { setCount(parseInt(btn.dataset.count)); });
+});
+document.getElementById('start-btn').addEventListener('click', startGame);
+document.getElementById('config-btn').addEventListener('click', goSetup);
+document.getElementById('undo-btn').addEventListener('click', undoLast);
+document.getElementById('reset-btn').addEventListener('click', resetScores);
+
+function setCount(n) {
+  cfg.count = n;
+  document.querySelectorAll('.cnt-btn').forEach(function(b) {
+    b.classList.toggle('active', parseInt(b.dataset.count) === n);
+  });
+  buildNameInputs();
+}
+
+function buildNameInputs() {
+  const el = document.getElementById('name-inputs');
+  el.innerHTML = '';
+  for (var i = 0; i < cfg.count; i++) {
+    var row = document.createElement('div');
+    row.className = 'name-row';
+    row.innerHTML =
+      '<div class="name-dot" style="background:' + COLORS[i].dot + '"></div>' +
+      '<input class="name-input" id="ni' + i + '" value="' + cfg.names[i] + '" placeholder="Jogador ' + (i+1) + '" maxlength="12" />';
+    el.appendChild(row);
+  }
+}
+
+function startGame() {
+  for (var i = 0; i < cfg.count; i++) {
+    var v = (document.getElementById('ni' + i).value || '').trim();
+    cfg.names[i] = v || ('Jogador ' + (i+1));
+  }
+  cfg.target = parseInt(document.getElementById('meta-select').value);
+  state = { scores: Array(cfg.count).fill(0), history: [] };
+  buildGameUI();
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('game').style.display = '-webkit-flex';
+  document.getElementById('game').style.display = 'flex';
+  render();
+}
+
+function goSetup() {
+  document.getElementById('game').style.display = 'none';
+  document.getElementById('setup').style.display = 'flex';
+  buildNameInputs();
+}
+
+function buildGameUI() {
+  var area = document.getElementById('players-area');
+  area.className = 'players-area p' + cfg.count;
+  area.innerHTML = '';
+  document.getElementById('meta-display').textContent = 'meta: ' + cfg.target + ' pts';
+
+  for (var i = 0; i < cfg.count; i++) {
+    (function(idx) {
+      var col = COLORS[idx];
+      var card = document.createElement('div');
+      card.className = 'player-card';
+      card.id = 'card' + idx;
+
+      var qBtnsHtml = QUICK.map(function(p) {
+        return '<button type="button" class="q-btn" data-pts="' + p + '">+' + p + '</button>';
+      }).join('');
+
+      card.innerHTML =
+        '<div class="card-header">' +
+          '<div class="p-dot" style="background:' + col.dot + '"></div>' +
+          '<div class="p-name" style="color:' + col.dot + '">' + cfg.names[idx] + '</div>' +
+        '</div>' +
+        '<div class="p-score-wrap">' +
+          '<div class="p-score" id="sc' + idx + '" style="color:' + col.dot + '">0</div>' +
+        '</div>' +
+        '<div class="p-progress">' +
+          '<div class="p-progress-fill" id="pf' + idx + '" style="background:' + col.dot + ';width:0%"></div>' +
+        '</div>' +
+        '<div class="quick-btns">' + qBtnsHtml + '</div>' +
+        '<div class="custom-row">' +
+          '<input class="c-input" id="ci' + idx + '" type="number" min="5" step="5" placeholder="+outro" inputmode="numeric" />' +
+          '<button type="button" class="c-add" id="ca' + idx + '">+</button>' +
+        '</div>' +
+        '<div class="err-flash" id="ef' + idx + '">múltiplo de 5!</div>';
+
+      area.appendChild(card);
+
+      // Wire quick buttons
+      card.querySelectorAll('.q-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() { addPts(idx, parseInt(btn.dataset.pts)); });
+      });
+
+      // Wire custom add button
+      document.getElementById('ca' + idx).addEventListener('click', function() { addCustom(idx); });
+
+      // Wire enter key
+      document.getElementById('ci' + idx).addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') addCustom(idx);
+      });
+    })(i);
+  }
+}
+
+function addPts(idx, pts) {
+  state.history.push(state.scores.slice());
+  state.scores[idx] += pts;
+  render();
+}
+
+function addCustom(idx) {
+  var inp = document.getElementById('ci' + idx);
+  var v = parseInt(inp.value);
+  if (!v || v <= 0 || v % 5 !== 0) { flashErr(idx); return; }
+  state.history.push(state.scores.slice());
+  state.scores[idx] += v;
+  inp.value = '';
+  render();
+}
+
+function flashErr(idx) {
+  var el = document.getElementById('ef' + idx);
+  el.classList.add('show');
+  setTimeout(function() { el.classList.remove('show'); }, 1800);
+}
+
+function undoLast() {
+  if (!state.history.length) return;
+  state.scores = state.history.pop();
+  render();
+}
+
+function resetScores() {
+  state = { scores: Array(cfg.count).fill(0), history: [] };
+  render();
+}
+
+function render() {
+  var max = Math.max.apply(null, state.scores);
+  document.getElementById('round-info').textContent = 'rodada ' + state.history.length;
+  for (var i = 0; i < cfg.count; i++) {
+    var s = state.scores[i];
+    var el = document.getElementById('sc' + i);
+    var prev = parseInt(el.textContent) || 0;
+    if (prev !== s) {
+      el.classList.remove('bump');
+      void el.offsetWidth;
+      el.classList.add('bump');
+    }
+    el.textContent = s;
+    document.getElementById('pf' + i).style.width = Math.min(100, Math.round(s / cfg.target * 100)) + '%';
+    document.getElementById('card' + i).classList.toggle('leader', s > 0 && s === max);
+  }
+}
+
+setCount(3);
+buildNameInputs();
+</script>
+</body>
+</html>
