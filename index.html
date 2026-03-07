@@ -312,7 +312,7 @@ html, body {
 
 .quick-btns {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 3px;
   padding: 0.28rem 0.35rem;
   flex: 1;
@@ -457,6 +457,120 @@ html, body {
   40% { transform: scale(1.25); }
   70% { transform: scale(0.92); }
 }
+
+/* History modal */
+.hist-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.82);
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 200;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.hist-overlay.show { display: -webkit-flex; display: flex; }
+
+.hist-sheet {
+  background: var(--surface);
+  border-radius: 18px 18px 0 0;
+  border: 1px solid var(--border);
+  width: 100%;
+  max-width: 480px;
+  max-height: 70vh;
+  display: -webkit-flex;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.hist-header {
+  display: -webkit-flex;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.1rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.hist-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+}
+
+.hist-close {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-family: 'DM Mono', monospace;
+  padding: 0.25rem 0.55rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.hist-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  padding: 0.6rem 0.9rem;
+}
+
+.hist-empty {
+  text-align: center;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  padding: 2rem 0;
+  font-style: italic;
+}
+
+.hist-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+}
+
+.hist-table th {
+  color: var(--muted);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  padding: 0.2rem 0.4rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+}
+
+.hist-table td {
+  padding: 0.35rem 0.4rem;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  color: var(--text);
+}
+
+.hist-table tr:last-child td { border-bottom: none; }
+
+.hist-table .td-round { color: var(--muted); }
+.hist-table .td-pts { color: var(--gold); font-weight: 500; }
+.hist-table .td-total { color: var(--muted); }
+
+/* Wake lock indicator */
+.wakelock-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: #66bb6a;
+  opacity: 0.5;
+  flex-shrink: 0;
+  transition: opacity 0.3s;
+}
+.wakelock-dot.off { background: var(--muted); opacity: 0.3; }
 </style>
 </head>
 <body>
@@ -494,19 +608,33 @@ html, body {
   <div class="topbar">
     <div class="topbar-title">DOMINÓ</div>
     <div class="topbar-meta" id="meta-display"></div>
-    <button type="button" class="icon-btn" id="config-btn">⚙ config</button>
+    <div style="display:flex;align-items:center;gap:0.4rem;">
+      <div class="wakelock-dot off" id="wakelock-dot" title="Ecrã sempre ligado"></div>
+      <button type="button" class="icon-btn" id="config-btn">⚙ config</button>
+    </div>
   </div>
 
   <div class="players-area" id="players-area"></div>
 
   <div class="bottombar">
     <button type="button" class="bot-btn" id="undo-btn">↩ desfazer</button>
-    <div class="round-info" id="round-info">rodada 0</div>
+    <button type="button" class="bot-btn" id="hist-btn">📋 histórico</button>
     <button type="button" class="bot-btn danger" id="reset-btn">reiniciar</button>
   </div>
 </div>
 
 
+
+<!-- HISTORY MODAL -->
+<div class="hist-overlay" id="hist-overlay">
+  <div class="hist-sheet">
+    <div class="hist-header">
+      <div class="hist-title">📋 Histórico</div>
+      <button type="button" class="hist-close" id="hist-close">✕ fechar</button>
+    </div>
+    <div class="hist-body" id="hist-body"></div>
+  </div>
+</div>
 
 <script>
 const COLORS = [
@@ -516,10 +644,35 @@ const COLORS = [
   { dot: '#ab47bc' },
 ];
 
-const QUICK = [5, 10, 15, 20, 25, 30, 40, 50];
+const QUICK = [5, 10, 15, 20, 25, 30];
 
 let cfg = { count: 3, names: ['Xavier','Miro','Leonel','Vinagre'], target: 100 };
 let state = { scores: [], history: [] };
+// history entries: { prevScores: [], playerIdx: n, pts: n }
+
+// ── WAKE LOCK ──
+var wakeLock = null;
+function requestWakeLock() {
+  if ('wakeLock' in navigator) {
+    navigator.wakeLock.request('screen').then(function(lock) {
+      wakeLock = lock;
+      document.getElementById('wakelock-dot').classList.remove('off');
+      lock.addEventListener('release', function() {
+        document.getElementById('wakelock-dot').classList.add('off');
+      });
+    }).catch(function() {});
+  }
+}
+function releaseWakeLock() {
+  if (wakeLock) { wakeLock.release(); wakeLock = null; }
+  document.getElementById('wakelock-dot').classList.add('off');
+}
+// Re-acquire wake lock when tab becomes visible again (iOS releases it on tab switch)
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible' && document.getElementById('game').style.display !== 'none') {
+    requestWakeLock();
+  }
+});
 
 // Wire static buttons via addEventListener (iOS-safe)
 document.querySelectorAll('.cnt-btn').forEach(function(btn) {
@@ -529,6 +682,11 @@ document.getElementById('start-btn').addEventListener('click', startGame);
 document.getElementById('config-btn').addEventListener('click', goSetup);
 document.getElementById('undo-btn').addEventListener('click', undoLast);
 document.getElementById('reset-btn').addEventListener('click', resetScores);
+document.getElementById('hist-btn').addEventListener('click', openHistory);
+document.getElementById('hist-close').addEventListener('click', closeHistory);
+document.getElementById('hist-overlay').addEventListener('click', function(e) {
+  if (e.target === document.getElementById('hist-overlay')) closeHistory();
+});
 
 function setCount(n) {
   cfg.count = n;
@@ -562,10 +720,12 @@ function startGame() {
   document.getElementById('setup').style.display = 'none';
   document.getElementById('game').style.display = '-webkit-flex';
   document.getElementById('game').style.display = 'flex';
+  requestWakeLock();
   render();
 }
 
 function goSetup() {
+  releaseWakeLock();
   document.getElementById('game').style.display = 'none';
   document.getElementById('setup').style.display = 'flex';
   buildNameInputs();
@@ -625,7 +785,7 @@ function buildGameUI() {
 }
 
 function addPts(idx, pts) {
-  state.history.push(state.scores.slice());
+  state.history.push({ prevScores: state.scores.slice(), playerIdx: idx, pts: pts });
   state.scores[idx] += pts;
   render();
 }
@@ -634,7 +794,7 @@ function addCustom(idx) {
   var inp = document.getElementById('ci' + idx);
   var v = parseInt(inp.value);
   if (!v || v <= 0 || v % 5 !== 0) { flashErr(idx); return; }
-  state.history.push(state.scores.slice());
+  state.history.push({ prevScores: state.scores.slice(), playerIdx: idx, pts: v });
   state.scores[idx] += v;
   inp.value = '';
   render();
@@ -648,7 +808,8 @@ function flashErr(idx) {
 
 function undoLast() {
   if (!state.history.length) return;
-  state.scores = state.history.pop();
+  var entry = state.history.pop();
+  state.scores = entry.prevScores.slice();
   render();
 }
 
@@ -659,7 +820,6 @@ function resetScores() {
 
 function render() {
   var max = Math.max.apply(null, state.scores);
-  document.getElementById('round-info').textContent = 'rodada ' + state.history.length;
   for (var i = 0; i < cfg.count; i++) {
     var s = state.scores[i];
     var el = document.getElementById('sc' + i);
@@ -673,6 +833,63 @@ function render() {
     document.getElementById('pf' + i).style.width = Math.min(100, Math.round(s / cfg.target * 100)) + '%';
     document.getElementById('card' + i).classList.toggle('leader', s > 0 && s === max);
   }
+}
+
+function openHistory() {
+  renderHistory();
+  document.getElementById('hist-overlay').classList.add('show');
+}
+
+function closeHistory() {
+  document.getElementById('hist-overlay').classList.remove('show');
+}
+
+function renderHistory() {
+  var body = document.getElementById('hist-body');
+  if (!state.history.length) {
+    body.innerHTML = '<div class="hist-empty">Nenhuma jogada ainda</div>';
+    return;
+  }
+
+  // Build cumulative scores row by row
+  var rows = [];
+  var running = Array(cfg.count).fill(0);
+  for (var i = 0; i < state.history.length; i++) {
+    var entry = state.history[i];
+    running = entry.prevScores.slice();
+    running[entry.playerIdx] += entry.pts;
+    rows.push({ round: i + 1, playerIdx: entry.playerIdx, pts: entry.pts, totals: running.slice() });
+  }
+
+  var colHeaders = '<th class="td-round">#</th><th>Jogador</th><th>+Pts</th>';
+  for (var p = 0; p < cfg.count; p++) {
+    colHeaders += '<th style="color:' + COLORS[p].dot + '">' + cfg.names[p] + '</th>';
+  }
+
+  var rowsHtml = '';
+  for (var r = rows.length - 1; r >= 0; r--) {
+    var row = rows[r];
+    var playerName = cfg.names[row.playerIdx];
+    var playerColor = COLORS[row.playerIdx].dot;
+    var totalCells = '';
+    for (var p = 0; p < cfg.count; p++) {
+      var isActive = p === row.playerIdx;
+      totalCells += '<td class="td-total" style="' + (isActive ? 'color:' + COLORS[p].dot + ';font-weight:700' : '') + '">' + row.totals[p] + '</td>';
+    }
+    rowsHtml +=
+      '<tr>' +
+        '<td class="td-round">' + row.round + '</td>' +
+        '<td style="color:' + playerColor + ';font-weight:600">' + playerName + '</td>' +
+        '<td class="td-pts">+' + row.pts + '</td>' +
+        totalCells +
+      '</tr>';
+  }
+
+  body.innerHTML =
+    '<table class="hist-table">' +
+      '<thead><tr>' + colHeaders + '</tr></thead>' +
+      '<tbody>' + rowsHtml + '</tbody>' +
+    '</table>';
 }
 
 setCount(3);
