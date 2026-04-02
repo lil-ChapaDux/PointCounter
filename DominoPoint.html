@@ -609,6 +609,13 @@ html, body {
 .data-table tr:last-child td { border-bottom: none; }
 .data-table .td-highlight { color: var(--gold); font-weight: 500; font-size: 0.85rem; }
 
+/* Sortable Headers */
+.sortable { cursor: pointer; transition: color 0.15s; user-select: none; }
+.sortable:hover { color: var(--text); }
+.sortable.active { color: var(--gold); }
+.sort-icon { display: inline-block; width: 10px; font-size: 0.55rem; margin-left: 2px; opacity: 0.4; }
+.sortable.active .sort-icon { opacity: 1; }
+
 /* Rank Badges */
 .rank-badges-wrap {
   display: flex;
@@ -729,6 +736,7 @@ const QUICK = [5, 10, 15, 20, 25, 30];
 
 let cfg = { count: 3, names: ['Xavier','Miro','Leonel','Vinagre'], target: 100 };
 let state = { scores: [], history: [] };
+let lbSort = { col: 'pts', desc: true }; // Leaderboard sort state
 
 // ── PERSISTENCE ──
 function saveState() {
@@ -787,7 +795,10 @@ document.getElementById('hist-close').addEventListener('click', closeHistory);
 document.getElementById('hist-overlay').addEventListener('click', function(e) {
   if (e.target === document.getElementById('hist-overlay')) closeHistory();
 });
-document.getElementById('show-leaderboard-btn').addEventListener('click', openLeaderboard);
+document.getElementById('show-leaderboard-btn').addEventListener('click', () => {
+  document.getElementById('leaderboard-overlay').classList.add('show');
+  renderLeaderboard();
+});
 document.getElementById('leaderboard-close').addEventListener('click', closeLeaderboard);
 document.getElementById('clear-leaderboard-btn').addEventListener('click', clearLeaderboard);
 document.getElementById('leaderboard-overlay').addEventListener('click', function(e) {
@@ -1002,12 +1013,14 @@ function finishGame() {
     if (!leaderboard[pName] || typeof leaderboard[pName] === 'number') {
       leaderboard[pName] = { 
         totalPts: leaderboard[pName] || 0, 
-        last5: [] 
+        last5: [],
+        gamesPlayed: 0
       };
     }
     
     leaderboard[pName].totalPts += scores[i].pts;
     leaderboard[pName].last5.push(scores[i].rank);
+    leaderboard[pName].gamesPlayed = (leaderboard[pName].gamesPlayed || 0) + 1;
     
     // Keep only the last 5 games
     if (leaderboard[pName].last5.length > 5) {
@@ -1076,52 +1089,90 @@ function renderHistory() {
     '</table>';
 }
 
-function openLeaderboard() {
+function renderLeaderboard() {
   var body = document.getElementById('leaderboard-body');
   var leaderboard = JSON.parse(localStorage.getItem('domino_leaderboard') || '{}');
   
   var players = Object.keys(leaderboard).map(name => {
     var data = leaderboard[name];
-    // Handle legacy format fallback if necessary
     var totalPts = typeof data === 'number' ? data : data.totalPts;
     var last5 = typeof data === 'number' ? [] : data.last5;
-    return { name: name, pts: totalPts, last5: last5 };
+    var gamesPlayed = typeof data === 'number' ? 0 : (data.gamesPlayed || last5.length);
+    var avg = gamesPlayed > 0 ? (totalPts / gamesPlayed) : 0;
+    
+    return { name: name, pts: totalPts, last5: last5, gamesPlayed: gamesPlayed, avg: avg };
   });
   
-  players.sort((a, b) => b.pts - a.pts);
+  // Sort Logic
+  players.sort((a, b) => {
+    let valA = a[lbSort.col];
+    let valB = b[lbSort.col];
+    if (valA === valB) return 0;
+    return lbSort.desc ? (valB - valA) : (valA - valB);
+  });
 
   if (players.length === 0) {
     body.innerHTML = '<div class="modal-empty">Nenhum registo de vitórias ainda.</div>';
-  } else {
-    var rowsHtml = '';
-    for (var i = 0; i < players.length; i++) {
-      var badgesHtml = '';
-      for (var j = 0; j < 5; j++) {
-        if (j < players[i].last5.length) {
-          var rank = players[i].last5[j];
-          var rankClass = rank <= 4 ? 'rank-' + rank : 'rank-4';
-          badgesHtml += '<div class="rank-badge ' + rankClass + '">' + rank + '</div>';
-        } else {
-          badgesHtml += '<div class="rank-badge rank-empty">-</div>';
-        }
-      }
-      
-      rowsHtml += 
-        '<tr>' +
-          '<td style="color:var(--muted)">' + (i + 1) + 'º</td>' +
-          '<td style="font-weight:600">' + players[i].name + '</td>' +
-          '<td><div class="rank-badges-wrap">' + badgesHtml + '</div></td>' +
-          '<td class="td-highlight" style="text-align:right">' + players[i].pts + ' pts</td>' +
-        '</tr>';
-    }
-    body.innerHTML = 
-      '<table class="data-table">' +
-        '<thead><tr><th>Pos</th><th>Jogador</th><th>Últimos 5 Jogos</th><th style="text-align:right">Total</th></tr></thead>' +
-        '<tbody>' + rowsHtml + '</tbody>' +
-      '</table>';
+    return;
   }
-  
-  document.getElementById('leaderboard-overlay').classList.add('show');
+
+  var rowsHtml = '';
+  for (var i = 0; i < players.length; i++) {
+    var badgesHtml = '';
+    for (var j = 0; j < 5; j++) {
+      if (j < players[i].last5.length) {
+        var rank = players[i].last5[j];
+        var rankClass = rank <= 4 ? 'rank-' + rank : 'rank-4';
+        badgesHtml += '<div class="rank-badge ' + rankClass + '">' + rank + '</div>';
+      } else {
+        badgesHtml += '<div class="rank-badge rank-empty">-</div>';
+      }
+    }
+    
+    rowsHtml += 
+      '<tr>' +
+        '<td style="color:var(--muted)">' + (i + 1) + 'º</td>' +
+        '<td style="font-weight:600">' + players[i].name + '</td>' +
+        '<td style="text-align:center">' + players[i].gamesPlayed + '</td>' +
+        '<td style="text-align:center">' + players[i].avg.toFixed(1) + '</td>' +
+        '<td><div class="rank-badges-wrap">' + badgesHtml + '</div></td>' +
+        '<td class="td-highlight" style="text-align:right">' + players[i].pts + ' pts</td>' +
+      '</tr>';
+  }
+
+  const getSortIcon = (col) => {
+    if (lbSort.col !== col) return '<span class="sort-icon"></span>';
+    return `<span class="sort-icon">${lbSort.desc ? '▼' : '▲'}</span>`;
+  };
+
+  const getHeaderClass = (col) => lbSort.col === col ? 'sortable active' : 'sortable';
+
+  body.innerHTML = 
+    '<table class="data-table">' +
+      '<thead><tr>' +
+        '<th>Pos</th>' +
+        '<th>Jogador</th>' +
+        `<th class="${getHeaderClass('gamesPlayed')}" data-col="gamesPlayed" style="text-align:center" title="Total de Jogos">J${getSortIcon('gamesPlayed')}</th>` +
+        `<th class="${getHeaderClass('avg')}" data-col="avg" style="text-align:center">Média${getSortIcon('avg')}</th>` +
+        '<th>Últimos 5</th>' +
+        `<th class="${getHeaderClass('pts')}" data-col="pts" style="text-align:right">Total${getSortIcon('pts')}</th>` +
+      '</tr></thead>' +
+      '<tbody>' + rowsHtml + '</tbody>' +
+    '</table>';
+
+  // Attach sorting events
+  body.querySelectorAll('.sortable').forEach(th => {
+    th.addEventListener('click', (e) => {
+      const col = e.currentTarget.dataset.col;
+      if (lbSort.col === col) {
+        lbSort.desc = !lbSort.desc;
+      } else {
+        lbSort.col = col;
+        lbSort.desc = true; // default descending on new column
+      }
+      renderLeaderboard();
+    });
+  });
 }
 
 function closeLeaderboard() {
@@ -1131,7 +1182,7 @@ function closeLeaderboard() {
 function clearLeaderboard() {
   if (confirm("Tens a certeza que queres eliminar todo o histórico de classificações? Esta ação não pode ser revertida.")) {
     localStorage.removeItem('domino_leaderboard');
-    openLeaderboard(); // refresh display
+    renderLeaderboard(); // refresh display
   }
 }
 
