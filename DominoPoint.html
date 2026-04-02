@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Dominó</title>
+
+<!-- FAVICON OPTIONS (Uncomment the one you want in your local editor) -->
+<!-- Style 1: Classic Gold Domino (Default) -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='5' y='2' width='14' height='20' rx='2' fill='%23f0c040'/%3E%3Cline x1='5' y1='12' x2='19' y2='12' stroke='%230f1117' stroke-width='1.5'/%3E%3Ccircle cx='12' cy='7' r='1.5' fill='%230f1117'/%3E%3Ccircle cx='9' cy='16' r='1.2' fill='%230f1117'/%3E%3Ccircle cx='15' cy='18' r='1.2' fill='%230f1117'/%3E%3C/svg%3E">
+
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500;600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -518,18 +523,6 @@ html, body {
 
 .bot-btn.finish:hover { color: #81c784; background: rgba(102,187,106,0.2); }
 
-.round-info {
-  font-family: 'DM Mono', monospace;
-  font-size: 0.62rem;
-  color: var(--muted);
-}
-
-@keyframes bump {
-  0%,100% { transform: scale(1); }
-  40% { transform: scale(1.25); }
-  70% { transform: scale(0.92); }
-}
-
 /* Modals */
 .modal-overlay {
   position: fixed; inset: 0;
@@ -734,6 +727,7 @@ html, body {
   </div>
 </div>
 
+<!-- MODALS -->
 <div class="modal-overlay" id="hist-overlay">
   <div class="modal-sheet">
     <div class="modal-header">
@@ -769,7 +763,7 @@ const QUICK = [5, 10, 15, 20, 25, 30];
 
 let cfg = { count: 3, names: ['Xavier','Miro','Leonel','Vinagre'], target: 100 };
 let state = { scores: [], history: [] };
-let lbSort = { col: 'pts', desc: true }; // Leaderboard sort state
+let lbSort = { col: 'pts', desc: true }; 
 let knownPlayers = [];
 
 // ── PERSISTENCE ──
@@ -833,10 +827,12 @@ document.getElementById('show-leaderboard-btn').addEventListener('click', () => 
   document.getElementById('leaderboard-overlay').classList.add('show');
   renderLeaderboard();
 });
-document.getElementById('leaderboard-close').addEventListener('click', closeLeaderboard);
+document.getElementById('leaderboard-close').addEventListener('click', () => {
+  document.getElementById('leaderboard-overlay').classList.remove('show');
+});
 document.getElementById('clear-leaderboard-btn').addEventListener('click', clearLeaderboard);
 document.getElementById('leaderboard-overlay').addEventListener('click', function(e) {
-  if (e.target === document.getElementById('leaderboard-overlay')) closeLeaderboard();
+  if (e.target === document.getElementById('leaderboard-overlay')) document.getElementById('leaderboard-overlay').classList.remove('show');
 });
 
 function setCount(n) {
@@ -864,7 +860,7 @@ function buildNameInputs() {
       row.innerHTML =
         '<div class="name-dot" style="background:' + COLORS[idx].dot + '"></div>' +
         '<div class="autocomplete-wrap">' +
-          '<input class="name-input" id="ni' + idx + '" value="' + cfg.names[idx] + '" placeholder="Jogador ' + (idx+1) + '" maxlength="12" autocomplete="off" />' +
+          '<input class="name-input" id="ni' + idx + '" value="' + (cfg.names[idx] || '') + '" placeholder="Jogador ' + (idx+1) + '" maxlength="12" autocomplete="off" />' +
           '<ul class="autocomplete-list" id="ac' + idx + '"></ul>' +
         '</div>';
       el.appendChild(row);
@@ -889,7 +885,7 @@ function buildNameInputs() {
           li.textContent = m;
           
           var selectItem = function(e) {
-            e.preventDefault(); // Prevents input from losing focus immediately on touch
+            e.preventDefault();
             inp.value = m;
             list.style.display = 'none';
           };
@@ -901,7 +897,7 @@ function buildNameInputs() {
       });
 
       inp.addEventListener('focus', function() { this.dispatchEvent(new Event('input')); });
-      inp.addEventListener('blur', function() { list.style.display = 'none'; });
+      inp.addEventListener('blur', function() { setTimeout(() => { list.style.display = 'none'; }, 200); });
     })(i);
   }
 }
@@ -928,7 +924,6 @@ function startGame() {
 function activateGameUI() {
   buildGameUI();
   document.getElementById('setup').style.display = 'none';
-  document.getElementById('game').style.display = '-webkit-flex';
   document.getElementById('game').style.display = 'flex';
   document.getElementById('game').style.height = '100dvh' in document.documentElement.style ? '100dvh' : '-webkit-fill-available';
   requestWakeLock();
@@ -1079,10 +1074,8 @@ function finishGame() {
     scores.push({ name: cfg.names[i], score: state.scores[i] });
   }
   
-  // Sort descending by score
   scores.sort((a, b) => b.score - a.score);
 
-  // Calculate ranks and points with Tie-breaking
   var currentRank = 1;
   for (var i = 0; i < scores.length; i++) {
     if (i > 0 && scores[i].score < scores[i-1].score) {
@@ -1097,7 +1090,6 @@ function finishGame() {
   for (var i = 0; i < scores.length; i++) {
     var pName = scores[i].name.trim();
     
-    // Migrate old format or initialize
     if (!leaderboard[pName] || typeof leaderboard[pName] === 'number') {
       leaderboard[pName] = { 
         totalPts: leaderboard[pName] || 0, 
@@ -1110,7 +1102,6 @@ function finishGame() {
     leaderboard[pName].last5.push(scores[i].rank);
     leaderboard[pName].gamesPlayed = (leaderboard[pName].gamesPlayed || 0) + 1;
     
-    // Keep only the last 5 games
     if (leaderboard[pName].last5.length > 5) {
       leaderboard[pName].last5.shift();
     }
@@ -1121,7 +1112,6 @@ function finishGame() {
   goSetup();
 }
 
-/* Modals Logic */
 function openHistory() {
   renderHistory();
   document.getElementById('hist-overlay').classList.add('show');
@@ -1191,7 +1181,6 @@ function renderLeaderboard() {
     return { name: name, pts: totalPts, last5: last5, gamesPlayed: gamesPlayed, avg: avg };
   });
   
-  // Sort Logic
   players.sort((a, b) => {
     let valA = a[lbSort.col];
     let valB = b[lbSort.col];
@@ -1248,7 +1237,6 @@ function renderLeaderboard() {
       '<tbody>' + rowsHtml + '</tbody>' +
     '</table>';
 
-  // Attach sorting events
   body.querySelectorAll('.sortable').forEach(th => {
     th.addEventListener('click', (e) => {
       const col = e.currentTarget.dataset.col;
@@ -1256,25 +1244,20 @@ function renderLeaderboard() {
         lbSort.desc = !lbSort.desc;
       } else {
         lbSort.col = col;
-        lbSort.desc = true; // default descending on new column
+        lbSort.desc = true;
       }
       renderLeaderboard();
     });
   });
 }
 
-function closeLeaderboard() {
-  document.getElementById('leaderboard-overlay').classList.remove('show');
-}
-
 function clearLeaderboard() {
   if (confirm("Tens a certeza que queres eliminar todo o histórico de classificações? Esta ação não pode ser revertida.")) {
     localStorage.removeItem('domino_leaderboard');
-    renderLeaderboard(); // refresh display
+    renderLeaderboard();
   }
 }
 
-// Init
 if (loadState()) {
   activateGameUI();
 } else {
