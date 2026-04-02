@@ -666,6 +666,7 @@ html, body {
 
     <div class="setup-label">Nomes</div>
     <div class="player-names" id="name-inputs"></div>
+    <datalist id="known-players"></datalist>
 
     <div class="meta-row">
       <span class="meta-label">META:</span>
@@ -813,6 +814,17 @@ function setCount(n) {
   buildNameInputs();
 }
 
+function populateDatalist() {
+  var leaderboard = JSON.parse(localStorage.getItem('domino_leaderboard') || '{}');
+  var datalist = document.getElementById('known-players');
+  datalist.innerHTML = '';
+  Object.keys(leaderboard).forEach(function(name) {
+    var option = document.createElement('option');
+    option.value = name;
+    datalist.appendChild(option);
+  });
+}
+
 function buildNameInputs() {
   const el = document.getElementById('name-inputs');
   el.innerHTML = '';
@@ -821,15 +833,24 @@ function buildNameInputs() {
     row.className = 'name-row';
     row.innerHTML =
       '<div class="name-dot" style="background:' + COLORS[i].dot + '"></div>' +
-      '<input class="name-input" id="ni' + i + '" value="' + cfg.names[i] + '" placeholder="Jogador ' + (i+1) + '" maxlength="12" />';
+      '<input class="name-input" id="ni' + i + '" list="known-players" value="' + cfg.names[i] + '" placeholder="Jogador ' + (i+1) + '" maxlength="12" />';
     el.appendChild(row);
   }
+  populateDatalist();
+}
+
+function formatName(name) {
+  name = (name || '').trim();
+  if (!name) return "";
+  return name.split(/\s+/).map(function(word) {
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  }).join(' ');
 }
 
 function startGame() {
   for (var i = 0; i < cfg.count; i++) {
-    var v = (document.getElementById('ni' + i).value || '').trim();
-    cfg.names[i] = v || ('Jogador ' + (i+1));
+    var v = document.getElementById('ni' + i).value;
+    cfg.names[i] = formatName(v) || ('Jogador ' + (i+1));
   }
   cfg.target = parseInt(document.getElementById('meta-select').value);
   state = { scores: Array(cfg.count).fill(0), history: [] };
