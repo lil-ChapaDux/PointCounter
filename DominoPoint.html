@@ -17,6 +17,7 @@
   --muted: rgba(255,255,255,0.35);
   --gold: #f0c040;
   --gold-dim: rgba(240,192,64,0.15);
+  --green: #66bb6a;
 }
 
 html, body {
@@ -194,6 +195,24 @@ html, body {
 }
 
 .start-btn:active { transform: scale(0.97); opacity: 0.9; }
+
+.leaderboard-btn {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--gold);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  padding: 0.65rem;
+  margin-top: 0.75rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-appearance: none;
+  appearance: none;
+}
 
 /* ── GAME ── */
 #game {
@@ -430,6 +449,7 @@ html, body {
   background: var(--surface);
   flex-shrink: 0;
   gap: 0.5rem;
+  overflow-x: auto;
 }
 
 .bot-btn {
@@ -445,6 +465,7 @@ html, body {
   -webkit-appearance: none;
   appearance: none;
   transition: all 0.15s;
+  white-space: nowrap;
 }
 
 .bot-btn:hover { color: var(--text); }
@@ -456,12 +477,19 @@ html, body {
 
 .bot-btn.danger:hover { color: #ef5350; border-color: rgba(239,83,80,0.5); }
 
+.bot-btn.finish {
+  background: rgba(102,187,106,0.1);
+  border-color: rgba(102,187,106,0.3);
+  color: var(--green);
+}
+
+.bot-btn.finish:hover { color: #81c784; background: rgba(102,187,106,0.2); }
+
 .round-info {
   font-family: 'DM Mono', monospace;
   font-size: 0.62rem;
   color: var(--muted);
 }
-
 
 @keyframes bump {
   0%,100% { transform: scale(1); }
@@ -469,8 +497,8 @@ html, body {
   70% { transform: scale(0.92); }
 }
 
-/* History modal */
-.hist-overlay {
+/* Modals */
+.modal-overlay {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.82);
   display: none;
@@ -480,22 +508,22 @@ html, body {
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
-.hist-overlay.show { display: -webkit-flex; display: flex; }
+.modal-overlay.show { display: -webkit-flex; display: flex; }
 
-.hist-sheet {
+.modal-sheet {
   background: var(--surface);
   border-radius: 18px 18px 0 0;
   border: 1px solid var(--border);
   width: 100%;
   max-width: 480px;
-  max-height: 70vh;
+  max-height: 80vh;
   display: -webkit-flex;
   display: flex;
   flex-direction: column;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-.hist-header {
+.modal-header {
   display: -webkit-flex;
   display: flex;
   align-items: center;
@@ -505,14 +533,19 @@ html, body {
   flex-shrink: 0;
 }
 
-.hist-title {
+.modal-header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.modal-title {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 1.1rem;
   letter-spacing: 0.08em;
   color: var(--gold);
 }
 
-.hist-close {
+.modal-btn {
   background: rgba(255,255,255,0.06);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -526,14 +559,20 @@ html, body {
   appearance: none;
 }
 
-.hist-body {
+.modal-btn.danger {
+  color: #ef5350;
+  border-color: rgba(239,83,80,0.3);
+  background: rgba(239,83,80,0.1);
+}
+
+.modal-body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   flex: 1;
   padding: 0.6rem 0.9rem;
 }
 
-.hist-empty {
+.modal-empty {
   text-align: center;
   color: var(--muted);
   font-family: 'DM Mono', monospace;
@@ -542,14 +581,14 @@ html, body {
   font-style: italic;
 }
 
-.hist-table {
+.data-table {
   width: 100%;
   border-collapse: collapse;
   font-family: 'DM Mono', monospace;
   font-size: 0.72rem;
 }
 
-.hist-table th {
+.data-table th {
   color: var(--muted);
   font-weight: 400;
   letter-spacing: 0.08em;
@@ -560,17 +599,38 @@ html, body {
   text-transform: uppercase;
 }
 
-.hist-table td {
-  padding: 0.35rem 0.4rem;
+.data-table td {
+  padding: 0.4rem 0.4rem;
   border-bottom: 1px solid rgba(255,255,255,0.03);
   color: var(--text);
+  vertical-align: middle;
 }
 
-.hist-table tr:last-child td { border-bottom: none; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table .td-highlight { color: var(--gold); font-weight: 500; font-size: 0.85rem; }
 
-.hist-table .td-round { color: var(--muted); }
-.hist-table .td-pts { color: var(--gold); font-weight: 500; }
-.hist-table .td-total { color: var(--muted); }
+/* Rank Badges */
+.rank-badges-wrap {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 0.55rem;
+  font-weight: 700;
+  font-family: 'Nunito', sans-serif;
+}
+.rank-1 { background: var(--gold); color: #000; }
+.rank-2 { background: #e0e0e0; color: #000; }
+.rank-3 { background: #cd7f32; color: #fff; }
+.rank-4 { background: rgba(255,255,255,0.1); color: var(--muted); border: 1px solid var(--border); }
+.rank-empty { background: transparent; border: 1px dashed var(--border); color: transparent; }
 
 /* Wake lock indicator */
 .wakelock-dot {
@@ -586,7 +646,6 @@ html, body {
 </head>
 <body>
 
-<!-- SETUP -->
 <div id="setup">
   <div class="setup-logo">DOMINÓ<small>CONTADOR DE PONTOS</small></div>
 
@@ -611,10 +670,10 @@ html, body {
     </div>
 
     <button type="button" class="start-btn" id="start-btn">JOGAR</button>
+    <button type="button" class="leaderboard-btn" id="show-leaderboard-btn">🏆 CLASSIFICAÇÃO GERAL</button>
   </div>
 </div>
 
-<!-- GAME -->
 <div id="game">
   <div class="topbar">
     <div class="topbar-title">DOMINÓ</div>
@@ -631,19 +690,30 @@ html, body {
     <button type="button" class="bot-btn" id="undo-btn">↩ desfazer</button>
     <button type="button" class="bot-btn" id="hist-btn">📋 histórico</button>
     <button type="button" class="bot-btn danger" id="reset-btn">reiniciar</button>
+    <button type="button" class="bot-btn finish" id="finish-btn">🏁 terminar</button>
   </div>
 </div>
 
-
-
-<!-- HISTORY MODAL -->
-<div class="hist-overlay" id="hist-overlay">
-  <div class="hist-sheet">
-    <div class="hist-header">
-      <div class="hist-title">📋 Histórico</div>
-      <button type="button" class="hist-close" id="hist-close">✕ fechar</button>
+<div class="modal-overlay" id="hist-overlay">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <div class="modal-title">📋 Histórico da Partida</div>
+      <button type="button" class="modal-btn" id="hist-close">✕ fechar</button>
     </div>
-    <div class="hist-body" id="hist-body"></div>
+    <div class="modal-body" id="hist-body"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="leaderboard-overlay">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <div class="modal-title">🏆 Classificação Geral</div>
+      <div class="modal-header-actions">
+        <button type="button" class="modal-btn danger" id="clear-leaderboard-btn">limpar</button>
+        <button type="button" class="modal-btn" id="leaderboard-close">✕ fechar</button>
+      </div>
+    </div>
+    <div class="modal-body" id="leaderboard-body"></div>
   </div>
 </div>
 
@@ -659,7 +729,26 @@ const QUICK = [5, 10, 15, 20, 25, 30];
 
 let cfg = { count: 3, names: ['Xavier','Miro','Leonel','Vinagre'], target: 100 };
 let state = { scores: [], history: [] };
-// history entries: { prevScores: [], playerIdx: n, pts: n }
+
+// ── PERSISTENCE ──
+function saveState() {
+  localStorage.setItem('domino_state', JSON.stringify({ cfg: cfg, state: state }));
+}
+
+function loadState() {
+  var saved = localStorage.getItem('domino_state');
+  if (saved) {
+    var parsed = JSON.parse(saved);
+    cfg = parsed.cfg;
+    state = parsed.state;
+    return true;
+  }
+  return false;
+}
+
+function clearState() {
+  localStorage.removeItem('domino_state');
+}
 
 // ── WAKE LOCK ──
 var wakeLock = null;
@@ -678,14 +767,13 @@ function releaseWakeLock() {
   if (wakeLock) { wakeLock.release(); wakeLock = null; }
   document.getElementById('wakelock-dot').classList.add('off');
 }
-// Re-acquire wake lock when tab becomes visible again (iOS releases it on tab switch)
 document.addEventListener('visibilitychange', function() {
   if (document.visibilityState === 'visible' && document.getElementById('game').style.display !== 'none') {
     requestWakeLock();
   }
 });
 
-// Wire static buttons via addEventListener (iOS-safe)
+// Event Listeners
 document.querySelectorAll('.cnt-btn').forEach(function(btn) {
   btn.addEventListener('click', function() { setCount(parseInt(btn.dataset.count)); });
 });
@@ -693,10 +781,17 @@ document.getElementById('start-btn').addEventListener('click', startGame);
 document.getElementById('config-btn').addEventListener('click', goSetup);
 document.getElementById('undo-btn').addEventListener('click', undoLast);
 document.getElementById('reset-btn').addEventListener('click', resetScores);
+document.getElementById('finish-btn').addEventListener('click', finishGame);
 document.getElementById('hist-btn').addEventListener('click', openHistory);
 document.getElementById('hist-close').addEventListener('click', closeHistory);
 document.getElementById('hist-overlay').addEventListener('click', function(e) {
   if (e.target === document.getElementById('hist-overlay')) closeHistory();
+});
+document.getElementById('show-leaderboard-btn').addEventListener('click', openLeaderboard);
+document.getElementById('leaderboard-close').addEventListener('click', closeLeaderboard);
+document.getElementById('clear-leaderboard-btn').addEventListener('click', clearLeaderboard);
+document.getElementById('leaderboard-overlay').addEventListener('click', function(e) {
+  if (e.target === document.getElementById('leaderboard-overlay')) closeLeaderboard();
 });
 
 function setCount(n) {
@@ -727,13 +822,18 @@ function startGame() {
   }
   cfg.target = parseInt(document.getElementById('meta-select').value);
   state = { scores: Array(cfg.count).fill(0), history: [] };
+  
+  activateGameUI();
+}
+
+function activateGameUI() {
   buildGameUI();
   document.getElementById('setup').style.display = 'none';
   document.getElementById('game').style.display = '-webkit-flex';
   document.getElementById('game').style.display = 'flex';
   document.getElementById('game').style.height = '100dvh' in document.documentElement.style ? '100dvh' : '-webkit-fill-available';
   requestWakeLock();
-  render();
+  render(true);
 }
 
 function goSetup() {
@@ -780,15 +880,12 @@ function buildGameUI() {
 
       area.appendChild(card);
 
-      // Wire quick buttons
       card.querySelectorAll('.q-btn').forEach(function(btn) {
         btn.addEventListener('click', function() { addPts(idx, parseInt(btn.dataset.pts)); });
       });
 
-      // Wire custom add button
       document.getElementById('ca' + idx).addEventListener('click', function() { addCustom(idx); });
 
-      // Wire enter key
       document.getElementById('ci' + idx).addEventListener('keydown', function(e) {
         if (e.key === 'Enter') addCustom(idx);
       });
@@ -796,10 +893,27 @@ function buildGameUI() {
   }
 }
 
+function animateValue(id, start, end, duration) {
+  if (start === end) return;
+  var obj = document.getElementById(id);
+  var startTimestamp = null;
+  var step = function(timestamp) {
+    if (!startTimestamp) startTimestamp = timestamp;
+    var progress = Math.min((timestamp - startTimestamp) / duration, 1);
+    obj.innerHTML = Math.floor(progress * (end - start) + start);
+    if (progress < 1) {
+      window.requestAnimationFrame(step);
+    } else {
+      obj.innerHTML = end;
+    }
+  };
+  window.requestAnimationFrame(step);
+}
+
 function addPts(idx, pts) {
   state.history.push({ prevScores: state.scores.slice(), playerIdx: idx, pts: pts });
   state.scores[idx] += pts;
-  render();
+  render(false);
 }
 
 function addCustom(idx) {
@@ -809,7 +923,7 @@ function addCustom(idx) {
   state.history.push({ prevScores: state.scores.slice(), playerIdx: idx, pts: v });
   state.scores[idx] += v;
   inp.value = '';
-  render();
+  render(false);
 }
 
 function flashErr(idx) {
@@ -822,36 +936,95 @@ function undoLast() {
   if (!state.history.length) return;
   var entry = state.history.pop();
   state.scores = entry.prevScores.slice();
-  render();
+  render(false);
 }
 
 function resetScores() {
-  state = { scores: Array(cfg.count).fill(0), history: [] };
-  render();
+  if (confirm("Limpar pontuação atual?")) {
+    state = { scores: Array(cfg.count).fill(0), history: [] };
+    render(true);
+  }
 }
 
-function render() {
+function render(instant) {
   var max = Math.max.apply(null, state.scores);
   for (var i = 0; i < cfg.count; i++) {
     var s = state.scores[i];
     var el = document.getElementById('sc' + i);
     var prev = parseInt(el.textContent) || 0;
+    
     if (prev !== s) {
       el.classList.remove('bump');
       void el.offsetWidth;
       el.classList.add('bump');
+      if (instant) {
+        el.textContent = s;
+      } else {
+        animateValue('sc' + i, prev, s, 350);
+      }
+    } else if (instant) {
+      el.textContent = s;
     }
-    el.textContent = s;
+    
     document.getElementById('pf' + i).style.width = Math.min(100, Math.round(s / cfg.target * 100)) + '%';
     document.getElementById('card' + i).classList.toggle('leader', s > 0 && s === max);
   }
+  saveState();
 }
 
+function finishGame() {
+  if (!confirm("Terminar partida e registar classificação?")) return;
+
+  var scores = [];
+  for (var i = 0; i < cfg.count; i++) {
+    scores.push({ name: cfg.names[i], score: state.scores[i] });
+  }
+  
+  // Sort descending by score
+  scores.sort((a, b) => b.score - a.score);
+
+  // Calculate ranks and points with Tie-breaking
+  var currentRank = 1;
+  for (var i = 0; i < scores.length; i++) {
+    if (i > 0 && scores[i].score < scores[i-1].score) {
+      currentRank = i + 1;
+    }
+    scores[i].rank = currentRank;
+    scores[i].pts = Math.max(0, cfg.count - currentRank);
+  }
+
+  var leaderboard = JSON.parse(localStorage.getItem('domino_leaderboard') || '{}');
+
+  for (var i = 0; i < scores.length; i++) {
+    var pName = scores[i].name.trim();
+    
+    // Migrate old format or initialize
+    if (!leaderboard[pName] || typeof leaderboard[pName] === 'number') {
+      leaderboard[pName] = { 
+        totalPts: leaderboard[pName] || 0, 
+        last5: [] 
+      };
+    }
+    
+    leaderboard[pName].totalPts += scores[i].pts;
+    leaderboard[pName].last5.push(scores[i].rank);
+    
+    // Keep only the last 5 games
+    if (leaderboard[pName].last5.length > 5) {
+      leaderboard[pName].last5.shift();
+    }
+  }
+
+  localStorage.setItem('domino_leaderboard', JSON.stringify(leaderboard));
+  clearState();
+  goSetup();
+}
+
+/* Modals Logic */
 function openHistory() {
   renderHistory();
   document.getElementById('hist-overlay').classList.add('show');
 }
-
 function closeHistory() {
   document.getElementById('hist-overlay').classList.remove('show');
 }
@@ -859,11 +1032,10 @@ function closeHistory() {
 function renderHistory() {
   var body = document.getElementById('hist-body');
   if (!state.history.length) {
-    body.innerHTML = '<div class="hist-empty">Nenhuma jogada ainda</div>';
+    body.innerHTML = '<div class="modal-empty">Nenhuma jogada ainda</div>';
     return;
   }
 
-  // Build cumulative scores row by row
   var rows = [];
   var running = Array(cfg.count).fill(0);
   for (var i = 0; i < state.history.length; i++) {
@@ -873,7 +1045,7 @@ function renderHistory() {
     rows.push({ round: i + 1, playerIdx: entry.playerIdx, pts: entry.pts, totals: running.slice() });
   }
 
-  var colHeaders = '<th class="td-round">#</th><th>Jogador</th><th>+Pts</th>';
+  var colHeaders = '<th style="color:var(--muted)">#</th><th>Jogador</th><th>+Pts</th>';
   for (var p = 0; p < cfg.count; p++) {
     colHeaders += '<th style="color:' + COLORS[p].dot + '">' + cfg.names[p] + '</th>';
   }
@@ -886,26 +1058,90 @@ function renderHistory() {
     var totalCells = '';
     for (var p = 0; p < cfg.count; p++) {
       var isActive = p === row.playerIdx;
-      totalCells += '<td class="td-total" style="' + (isActive ? 'color:' + COLORS[p].dot + ';font-weight:700' : '') + '">' + row.totals[p] + '</td>';
+      totalCells += '<td style="' + (isActive ? 'color:' + COLORS[p].dot + ';font-weight:700' : 'color:var(--muted)') + '">' + row.totals[p] + '</td>';
     }
     rowsHtml +=
       '<tr>' +
-        '<td class="td-round">' + row.round + '</td>' +
+        '<td style="color:var(--muted)">' + row.round + '</td>' +
         '<td style="color:' + playerColor + ';font-weight:600">' + playerName + '</td>' +
-        '<td class="td-pts">+' + row.pts + '</td>' +
+        '<td class="td-highlight">+' + row.pts + '</td>' +
         totalCells +
       '</tr>';
   }
 
   body.innerHTML =
-    '<table class="hist-table">' +
+    '<table class="data-table">' +
       '<thead><tr>' + colHeaders + '</tr></thead>' +
       '<tbody>' + rowsHtml + '</tbody>' +
     '</table>';
 }
 
-setCount(3);
-buildNameInputs();
+function openLeaderboard() {
+  var body = document.getElementById('leaderboard-body');
+  var leaderboard = JSON.parse(localStorage.getItem('domino_leaderboard') || '{}');
+  
+  var players = Object.keys(leaderboard).map(name => {
+    var data = leaderboard[name];
+    // Handle legacy format fallback if necessary
+    var totalPts = typeof data === 'number' ? data : data.totalPts;
+    var last5 = typeof data === 'number' ? [] : data.last5;
+    return { name: name, pts: totalPts, last5: last5 };
+  });
+  
+  players.sort((a, b) => b.pts - a.pts);
+
+  if (players.length === 0) {
+    body.innerHTML = '<div class="modal-empty">Nenhum registo de vitórias ainda.</div>';
+  } else {
+    var rowsHtml = '';
+    for (var i = 0; i < players.length; i++) {
+      var badgesHtml = '';
+      for (var j = 0; j < 5; j++) {
+        if (j < players[i].last5.length) {
+          var rank = players[i].last5[j];
+          var rankClass = rank <= 4 ? 'rank-' + rank : 'rank-4';
+          badgesHtml += '<div class="rank-badge ' + rankClass + '">' + rank + '</div>';
+        } else {
+          badgesHtml += '<div class="rank-badge rank-empty">-</div>';
+        }
+      }
+      
+      rowsHtml += 
+        '<tr>' +
+          '<td style="color:var(--muted)">' + (i + 1) + 'º</td>' +
+          '<td style="font-weight:600">' + players[i].name + '</td>' +
+          '<td><div class="rank-badges-wrap">' + badgesHtml + '</div></td>' +
+          '<td class="td-highlight" style="text-align:right">' + players[i].pts + ' pts</td>' +
+        '</tr>';
+    }
+    body.innerHTML = 
+      '<table class="data-table">' +
+        '<thead><tr><th>Pos</th><th>Jogador</th><th>Últimos 5 Jogos</th><th style="text-align:right">Total</th></tr></thead>' +
+        '<tbody>' + rowsHtml + '</tbody>' +
+      '</table>';
+  }
+  
+  document.getElementById('leaderboard-overlay').classList.add('show');
+}
+
+function closeLeaderboard() {
+  document.getElementById('leaderboard-overlay').classList.remove('show');
+}
+
+function clearLeaderboard() {
+  if (confirm("Tens a certeza que queres eliminar todo o histórico de classificações? Esta ação não pode ser revertida.")) {
+    localStorage.removeItem('domino_leaderboard');
+    openLeaderboard(); // refresh display
+  }
+}
+
+// Init
+if (loadState()) {
+  activateGameUI();
+} else {
+  setCount(3);
+  buildNameInputs();
+}
 </script>
 </body>
 </html>
