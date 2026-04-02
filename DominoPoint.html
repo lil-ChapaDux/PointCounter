@@ -132,8 +132,13 @@ html, body {
   flex-shrink: 0;
 }
 
-.name-input {
+.autocomplete-wrap {
   flex: 1;
+  position: relative;
+}
+
+.name-input {
+  width: 100%;
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 9px;
@@ -149,6 +154,34 @@ html, body {
 }
 
 .name-input:focus { border-color: var(--gold); }
+
+.autocomplete-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  z-index: 50;
+  max-height: 150px;
+  overflow-y: auto;
+  display: none;
+  list-style: none;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+}
+
+.autocomplete-list li {
+  padding: 0.5rem 0.65rem;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.autocomplete-list li:last-child { border-bottom: none; }
+.autocomplete-list li:active { background: rgba(255,255,255,0.05); }
 
 .meta-row {
   display: flex;
@@ -666,7 +699,6 @@ html, body {
 
     <div class="setup-label">Nomes</div>
     <div class="player-names" id="name-inputs"></div>
-    <datalist id="known-players"></datalist>
 
     <div class="meta-row">
       <span class="meta-label">META:</span>
@@ -738,6 +770,7 @@ const QUICK = [5, 10, 15, 20, 25, 30];
 let cfg = { count: 3, names: ['Xavier','Miro','Leonel','Vinagre'], target: 100 };
 let state = { scores: [], history: [] };
 let lbSort = { col: 'pts', desc: true }; // Leaderboard sort state
+let knownPlayers = [];
 
 // ── PERSISTENCE ──
 function saveState() {
@@ -814,29 +847,63 @@ function setCount(n) {
   buildNameInputs();
 }
 
-function populateDatalist() {
+function loadKnownPlayers() {
   var leaderboard = JSON.parse(localStorage.getItem('domino_leaderboard') || '{}');
-  var datalist = document.getElementById('known-players');
-  datalist.innerHTML = '';
-  Object.keys(leaderboard).forEach(function(name) {
-    var option = document.createElement('option');
-    option.value = name;
-    datalist.appendChild(option);
-  });
+  knownPlayers = Object.keys(leaderboard);
 }
 
 function buildNameInputs() {
   const el = document.getElementById('name-inputs');
   el.innerHTML = '';
+  loadKnownPlayers();
+
   for (var i = 0; i < cfg.count; i++) {
-    var row = document.createElement('div');
-    row.className = 'name-row';
-    row.innerHTML =
-      '<div class="name-dot" style="background:' + COLORS[i].dot + '"></div>' +
-      '<input class="name-input" id="ni' + i + '" list="known-players" value="' + cfg.names[i] + '" placeholder="Jogador ' + (i+1) + '" maxlength="12" />';
-    el.appendChild(row);
+    (function(idx) {
+      var row = document.createElement('div');
+      row.className = 'name-row';
+      row.innerHTML =
+        '<div class="name-dot" style="background:' + COLORS[idx].dot + '"></div>' +
+        '<div class="autocomplete-wrap">' +
+          '<input class="name-input" id="ni' + idx + '" value="' + cfg.names[idx] + '" placeholder="Jogador ' + (idx+1) + '" maxlength="12" autocomplete="off" />' +
+          '<ul class="autocomplete-list" id="ac' + idx + '"></ul>' +
+        '</div>';
+      el.appendChild(row);
+
+      var inp = document.getElementById('ni' + idx);
+      var list = document.getElementById('ac' + idx);
+
+      inp.addEventListener('input', function() {
+        var val = this.value.toLowerCase();
+        list.innerHTML = '';
+        if (!val) { list.style.display = 'none'; return; }
+        
+        var matches = knownPlayers.filter(function(p) {
+          return p.toLowerCase().indexOf(val) !== -1 && p.toLowerCase() !== val;
+        });
+        
+        if (matches.length === 0) { list.style.display = 'none'; return; }
+        
+        list.style.display = 'block';
+        matches.forEach(function(m) {
+          var li = document.createElement('li');
+          li.textContent = m;
+          
+          var selectItem = function(e) {
+            e.preventDefault(); // Prevents input from losing focus immediately on touch
+            inp.value = m;
+            list.style.display = 'none';
+          };
+          
+          li.addEventListener('mousedown', selectItem);
+          li.addEventListener('touchstart', selectItem, {passive: false});
+          list.appendChild(li);
+        });
+      });
+
+      inp.addEventListener('focus', function() { this.dispatchEvent(new Event('input')); });
+      inp.addEventListener('blur', function() { list.style.display = 'none'; });
+    })(i);
   }
-  populateDatalist();
 }
 
 function formatName(name) {
